@@ -221,7 +221,13 @@ static const options_entry mame_sdl_options[] =
 	{ SDLOPTION_JOYINDEX "8",                SDLOPTVAL_AUTO, 0,         "name of joystick mapped to joystick #8" },
 	{ SDLOPTION_SIXAXIS,			         "0",	 OPTION_BOOLEAN,    "Use special handling for PS3 Sixaxis controllers" },
 
-#if (SDL_VERSION_ATLEAST(1,3,0))
+#ifdef GEKKO
+	{ NULL, 		                         NULL,   OPTION_HEADER,     "SDL MOUSE MAPPING" },
+	{ SDLOPTION_MOUSEINDEX "1",              SDLOPTVAL_AUTO, 0,         "name of mouse mapped to mouse #1" },
+	{ SDLOPTION_MOUSEINDEX "2",              SDLOPTVAL_AUTO, 0,         "name of mouse mapped to mouse #2" },
+	{ SDLOPTION_MOUSEINDEX "3",              SDLOPTVAL_AUTO, 0,         "name of mouse mapped to mouse #3" },
+	{ SDLOPTION_MOUSEINDEX "4",              SDLOPTVAL_AUTO, 0,         "name of mouse mapped to mouse #4" },
+#elif (SDL_VERSION_ATLEAST(1,3,0))
 	{ NULL, 		                         NULL,   OPTION_HEADER,     "SDL MOUSE MAPPING" },
 	{ SDLOPTION_MOUSEINDEX "1",              SDLOPTVAL_AUTO, 0,         "name of mouse mapped to mouse #1" },
 	{ SDLOPTION_MOUSEINDEX "2",              SDLOPTVAL_AUTO, 0,         "name of mouse mapped to mouse #2" },
