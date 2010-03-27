@@ -482,7 +482,7 @@ LIBS += -lz
 ZLIB =
 endif
 
-LIBS += -lSDL -ldb -lfat -logc -lwiiuse -lbte -lasnd -lwiikeyboard
+LIBS += -lSDLnovid -ldb -lfat -logc -lwiiuse -lbte -lasnd -lwiikeyboard
 
 #-------------------------------------------------
 # 'all' target needs to go here, before the 
