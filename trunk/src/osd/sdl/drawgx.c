@@ -118,10 +118,10 @@ struct _sdl_scale_mode
 typedef struct _gx_tex gx_tex;
 struct _gx_tex
 {
+	u32 size;
+	u8 format;
 	gx_tex *next;
 	void *addr;
-	u8 format;
-	u32 size;
 	void *data;
 };
 
@@ -135,7 +135,12 @@ static unsigned char *gp_fifo;
 
 static gx_tex *firstTex = NULL;
 static gx_tex *lastTex = NULL;
+static gx_tex *firstScreenTex = NULL;
+static gx_tex *lastScreenTex = NULL;
 static int is_inited = 0;
+
+static lwp_t vidthread = LWP_THREAD_NULL;
+static sdl_window_info *thread_window;
 
 #define DEFAULT_FIFO_SIZE	(256*1024)
 
@@ -150,7 +155,6 @@ static int is_inited = 0;
 // core functions
 static void drawgx_exit(void);
 static void drawgx_attach(sdl_draw_info *info, sdl_window_info *window);
-void drawgx_shutdown(void);
 static int drawgx_window_create(sdl_window_info *window, int width, int height);
 static void drawgx_window_resize(sdl_window_info *window, int width, int height);
 static void drawgx_window_destroy(sdl_window_info *window);
@@ -284,16 +288,13 @@ static void drawgx_attach(sdl_draw_info *info, sdl_window_info *window)
 
 static void drawgx_destroy_all_textures(sdl_window_info *window)
 {
-	/* nothing to be done in soft mode */
+	// the video thread does this on exit
 }
 
-void drawgx_shutdown(void)
+static void drawgx_shutdown(void)
 {
 	GX_AbortFrame();
 	GX_Flush();
-
-	VIDEO_ClearFrameBuffer(vmode, xfb[0], COLOR_BLACK);
-	VIDEO_ClearFrameBuffer(vmode, xfb[1], COLOR_BLACK);
 
 	VIDEO_Flush();
 	VIDEO_WaitVSync();
@@ -390,6 +391,7 @@ static int drawgx_window_create(sdl_window_info *window, int width, int height)
 	gp_fifo = memalign(32, DEFAULT_FIFO_SIZE);
 	memset(gp_fifo, 0, DEFAULT_FIFO_SIZE);
 	GX_Init(gp_fifo, DEFAULT_FIFO_SIZE);
+	atexit(drawgx_shutdown);
 
 	GX_SetCopyClear(background, 0x00ffffff);
  
@@ -466,6 +468,9 @@ static void drawgx_window_resize(sdl_window_info *window, int width, int height)
 
 static void drawgx_window_destroy(sdl_window_info *window)
 {
+	thread_window = NULL;
+	LWP_JoinThread(vidthread, NULL);
+	vidthread = LWP_THREAD_NULL;
 }
 
 //============================================================
@@ -609,7 +614,7 @@ static gx_tex *create_texture(render_primitive *prim)
 	case TEXFORMAT_RGB32:
 		newTex->format = GX_TF_RGBA8;
 		bpp = 4;
-		fixed = memalign(32, height * width * bpp);
+		fixed = (newTex->data) ? newTex->data : memalign(32, height * width * bpp);
 		for (y = 0; y < height; y+=4)
 		{
 			for (x = 0; x < width; x+=4)
@@ -642,7 +647,7 @@ static gx_tex *create_texture(render_primitive *prim)
 	case TEXFORMAT_PALETTEA16:
 		newTex->format = GX_TF_RGB5A3;
 		bpp = 2;
-		fixed = memalign(32, height * width * bpp);
+		fixed = (newTex->data) ? newTex->data : memalign(32, height * width * bpp);
 		for (y = 0; y < height; y+=4)
 		{
 			for (x = 0; x < width; x+=4)
@@ -666,7 +671,7 @@ static gx_tex *create_texture(render_primitive *prim)
 	case TEXFORMAT_RGB15:
 		newTex->format = GX_TF_RGB5A3;
 		bpp = 2;
-		fixed = memalign(32, height * width * bpp);
+		fixed = (newTex->data) ? newTex->data : memalign(32, height * width * bpp);
 		for (y = 0; y < height; y+=4)
 		{
 			for (x = 0; x < width; x+=4)
@@ -690,7 +695,7 @@ static gx_tex *create_texture(render_primitive *prim)
 	case TEXFORMAT_YUY16:
 		newTex->format = GX_TF_RGBA8;
 		bpp = 4;
-		fixed = memalign(32, height * width * bpp);
+		fixed = (newTex->data) ? newTex->data : memalign(32, height * width * bpp);
 		for (y = 0; y < height; y+=4)
 		{
 			for (x = 0; x < width; x+=4)
@@ -726,18 +731,35 @@ static gx_tex *create_texture(render_primitive *prim)
 	newTex->size = height * width * bpp;
 	newTex->data = fixed;
 	newTex->addr = &(*data);
-	if (firstTex == NULL)
-		firstTex = newTex;
-	else
-		lastTex->next = newTex;
 
-	lastTex = newTex;
+	if (PRIMFLAG_GET_SCREENTEX(prim->flags))
+	{
+		if (firstScreenTex == NULL)
+			firstScreenTex = newTex;
+		else
+			lastScreenTex->next = newTex;
+
+		lastScreenTex = newTex;
+	}
+	else
+	{
+		if (firstTex == NULL)
+			firstTex = newTex;
+		else
+			lastTex->next = newTex;
+
+		lastTex = newTex;
+	}
+
 	return newTex;
 }
 
 static gx_tex *get_texture(render_primitive *prim)
 {
 	gx_tex *t = firstTex;
+	
+	if (PRIMFLAG_GET_SCREENTEX(prim->flags))
+		return create_texture(prim);
 
 	while (t != NULL)
 		if (t->addr == prim->texture.base)
@@ -748,7 +770,6 @@ static gx_tex *get_texture(render_primitive *prim)
 	return create_texture(prim);
 }
 
-//#if 0
 static void prep_texture(render_primitive *prim)
 {
 	gx_tex *newTex = get_texture(prim);
@@ -777,167 +798,200 @@ static void clearTexs()
 	firstTex = NULL;
 	lastTex = NULL;
 }
-//#endif
+
+static void clearScreenTexs()
+{
+	gx_tex *t = firstScreenTex;
+	gx_tex *n;
+	
+	while (t != NULL)
+	{
+		n = t->next;
+		free(t->data);
+		free(t);
+		t = n;
+	}
+	
+	firstScreenTex = NULL;
+	lastScreenTex = NULL;
+}
 
 //============================================================
 //  drawgx_window_draw
 //============================================================
 
-static int drawgx_window_draw(sdl_window_info *window, UINT32 dc, int update)
+static void *draw_thread()
 {
-	sdl_info *sdl = window->dxdata;
+	sdl_info *sdl;
 	render_primitive *prim;
 	INT32 vofs, hofs, blitwidth, blitheight, ch, cw;
 
-	if (video_config.novideo)
+	while (1)
 	{
-		return 0;
-	}
+		if (thread_window == NULL) break;
 
-	// if we haven't been created, just punt
-	if (sdl == NULL)
-		return 1;
+		sdl = thread_window->dxdata;
 
-	vofs = hofs = 0;
-	blitwidth = window->blitwidth;
-	blitheight = window->blitheight;
-
-	// figure out what coordinate system to use for centering - in window mode it's always the
-	// SDL surface size.  in fullscreen the surface covers all monitors, so center according to
-	// the first one only
-	if ((window->fullscreen) && (!video_config.switchres))
-	{
-		ch = window->monitor->center_height;
-		cw = window->monitor->center_width;
-	}
-	else
-	{
-		ch = window->height;
-		cw = window->width;
-	}
-
-	// do not crash if the window's smaller than the blit area
-	if (blitheight > ch)
-	{
-		  	blitheight = ch;
-	}
-	else if (video_config.centerv)
-	{
-		vofs = (ch - window->blitheight) / 2;
-	}
-
-	if (blitwidth > cw)
-	{
-		  	blitwidth = cw;
-	}
-	else if (video_config.centerh)
-	{
-		hofs = (cw - window->blitwidth) / 2;
-	}
-
-	sdl->last_hofs = hofs;
-	sdl->last_vofs = vofs;
-
-	hofs += sdl->safe_hofs;
-	vofs += sdl->safe_vofs;
-
-	osd_lock_acquire(window->primlist->lock);
-
-	for (prim = window->primlist->head; prim != NULL; prim = prim->next)
-	{
-		u8 r, g, b, a;
-		r = (u8)(255.0f * prim->color.r);
-		g = (u8)(255.0f * prim->color.g);
-		b = (u8)(255.0f * prim->color.b);
-		a = (u8)(255.0f * prim->color.a);
-
-		switch (PRIMFLAG_GET_BLENDMODE(prim->flags))
+		if (video_config.novideo)
 		{
-			case BLENDMODE_NONE:
-				GX_SetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR);
-				break;
-			case BLENDMODE_ALPHA:
-				GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
-				break;
-			case BLENDMODE_RGB_MULTIPLY:
-				GX_SetBlendMode(GX_BM_SUBSTRACT, GX_BL_SRCCLR, GX_BL_ZERO, GX_LO_CLEAR);
-				break;
-			case BLENDMODE_ADD:
-				GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_CLEAR);
-				break;
+			return NULL;
 		}
 
-		switch (prim->type)
+		// if we haven't been created, just punt
+		if (sdl == NULL)
+			return NULL;
+
+		vofs = hofs = 0;
+		blitwidth = thread_window->blitwidth;
+		blitheight = thread_window->blitheight;
+
+		// figure out what coordinate system to use for centering - in window mode it's always the
+		// SDL surface size.  in fullscreen the surface covers all monitors, so center according to
+		// the first one only
+		if ((thread_window->fullscreen) && (!video_config.switchres))
 		{
-			case RENDER_PRIMITIVE_LINE:
-				GX_LoadTexObj(&blankTex, GX_TEXMAP0);
-				GX_SetLineWidth((u8)(prim->width * 16.0f), GX_TO_ZERO);
-				GX_Begin(GX_LINES, GX_VTXFMT0, 2);
-					GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
-					GX_Color4u8(r, g, b, a);
-					GX_TexCoord2f32(0, 0);
-					GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
-					GX_Color4u8(r, g, b, a);
-					GX_TexCoord2f32(0, 0);
-				GX_End();
-				break;
-			case RENDER_PRIMITIVE_QUAD:
-				if (prim->texture.base != NULL)
-				{
-					prep_texture(prim);
-					GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
-						GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(prim->texcoords.tl.u, prim->texcoords.tl.v);
-						GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y1+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(prim->texcoords.bl.u, prim->texcoords.bl.v);
-						GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(prim->texcoords.br.u, prim->texcoords.br.v);
-						GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y0+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(prim->texcoords.tr.u, prim->texcoords.tr.v);
-					GX_End();
-				}
-				else
-				{
+			ch = thread_window->monitor->center_height;
+			cw = thread_window->monitor->center_width;
+		}
+		else
+		{
+			ch = thread_window->height;
+			cw = thread_window->width;
+		}
+
+		// do not crash if the window's smaller than the blit area
+		if (blitheight > ch)
+		{
+				blitheight = ch;
+		}
+		else if (video_config.centerv)
+		{
+			vofs = (ch - thread_window->blitheight) / 2;
+		}
+
+		if (blitwidth > cw)
+		{
+				blitwidth = cw;
+		}
+		else if (video_config.centerh)
+		{
+			hofs = (cw - thread_window->blitwidth) / 2;
+		}
+
+		sdl->last_hofs = hofs;
+		sdl->last_vofs = vofs;
+
+		hofs += sdl->safe_hofs;
+		vofs += sdl->safe_vofs;
+
+		osd_lock_acquire(thread_window->primlist->lock);
+
+		for (prim = thread_window->primlist->head; prim != NULL; prim = prim->next)
+		{
+			u8 r, g, b, a;
+			r = (u8)(255.0f * prim->color.r);
+			g = (u8)(255.0f * prim->color.g);
+			b = (u8)(255.0f * prim->color.b);
+			a = (u8)(255.0f * prim->color.a);
+
+			switch (PRIMFLAG_GET_BLENDMODE(prim->flags))
+			{
+				case BLENDMODE_NONE:
+					GX_SetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR);
+					break;
+				case BLENDMODE_ALPHA:
+					GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
+					break;
+				case BLENDMODE_RGB_MULTIPLY:
+					GX_SetBlendMode(GX_BM_SUBSTRACT, GX_BL_SRCCLR, GX_BL_ZERO, GX_LO_CLEAR);
+					break;
+				case BLENDMODE_ADD:
+					GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_CLEAR);
+					break;
+			}
+
+			switch (prim->type)
+			{
+				case RENDER_PRIMITIVE_LINE:
 					GX_LoadTexObj(&blankTex, GX_TEXMAP0);
-					GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
+					GX_SetLineWidth((u8)(prim->width * 16.0f), GX_TO_ZERO);
+					GX_Begin(GX_LINES, GX_VTXFMT0, 2);
 						GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(0, 0);
-						GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y1+vofs);
 						GX_Color4u8(r, g, b, a);
 						GX_TexCoord2f32(0, 0);
 						GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
 						GX_Color4u8(r, g, b, a);
 						GX_TexCoord2f32(0, 0);
-						GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y0+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(0, 0);
 					GX_End();
-				}
-				break;
+					break;
+				case RENDER_PRIMITIVE_QUAD:
+					if (prim->texture.base != NULL)
+					{
+						prep_texture(prim);
+						GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
+							GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(prim->texcoords.tl.u, prim->texcoords.tl.v);
+							GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y1+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(prim->texcoords.bl.u, prim->texcoords.bl.v);
+							GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(prim->texcoords.br.u, prim->texcoords.br.v);
+							GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y0+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(prim->texcoords.tr.u, prim->texcoords.tr.v);
+						GX_End();
+					}
+					else
+					{
+						GX_LoadTexObj(&blankTex, GX_TEXMAP0);
+						GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
+							GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(0, 0);
+							GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y1+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(0, 0);
+							GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(0, 0);
+							GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y0+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(0, 0);
+						GX_End();
+					}
+					break;
+			}
 		}
+
+		osd_lock_release(thread_window->primlist->lock);
+
+		currfb ^= 1;
+
+		GX_DrawDone();
+
+		GX_CopyDisp(xfb[currfb],GX_TRUE);
+
+		VIDEO_SetNextFramebuffer(xfb[currfb]);
+
+		VIDEO_Flush();
+		VIDEO_WaitVSync();
+
+		clearScreenTexs();
 	}
-
-	currfb ^= 1;
-
-	GX_DrawDone();
-
-	GX_CopyDisp(xfb[currfb],GX_TRUE);
-
-	osd_lock_release(window->primlist->lock);
-
-	VIDEO_SetNextFramebuffer(xfb[currfb]);
-
-	VIDEO_Flush();
-	VIDEO_WaitVSync();
-
-	currfb ^= 1;
 
 	clearTexs();
 
+	return NULL;
+}
+
+static int drawgx_window_draw(sdl_window_info *window, UINT32 dc, int update)
+{
+	if (vidthread == LWP_THREAD_NULL)
+		LWP_CreateThread(&vidthread, draw_thread, NULL, NULL, 0, 68);
+
+	thread_window = window;
+	
 	return 0;
 }

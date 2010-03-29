@@ -74,8 +74,6 @@ static char cwd[512];
 
 static int is_inited;
 
-void drawgx_shutdown(void);
-
 //============================================================
 //  OPTIONS
 //============================================================
@@ -468,8 +466,6 @@ int SDL_main(int argc, char **argv)
 
 	fatUnmount("sd:");
 	fatUnmount("usb:");
-
-	drawgx_shutdown();
 
 	exit(res);
 
