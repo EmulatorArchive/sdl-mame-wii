@@ -146,6 +146,17 @@ const game_driver * const drivers[] =
 
 	DRIVER( jrpacman )	/* (c) 1983 Midway */
 
+	/* Epos games */
+	DRIVER( megadon )	/* (c) 1982 */
+	DRIVER( catapult )	/* (c) 1982 */
+	DRIVER( suprglob )	/* (c) 1983 */
+	DRIVER( theglob )	/* (c) 1983 */
+	DRIVER( theglob2 )	/* (c) 1983 */
+	DRIVER( theglob3 )	/* (c) 1983 */
+	DRIVER( igmo )		/* (c) 1984 */
+	DRIVER( dealer )	/* (c) 198? */
+	DRIVER( revenger )	/* (c) 1984 */
+
 	/* "Galaxian hardware" games */
 	DRIVER( galaxian )	/* (c) Namco */
 	DRIVER( galaxiana )	/* (c) Namco */
