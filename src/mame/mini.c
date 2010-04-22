@@ -38,23 +38,110 @@ const game_driver * const drivers[] =
 
 #else	/* DRIVER_RECURSIVE */
 
-	DRIVER( robby )		/* (c) 1981 Bally Midway */
-	DRIVER( gridlee ) 	/* [1983 Videa] prototype - no copyright notice */
-	DRIVER( alienar ) 	/* (c) 1985 Duncan Brown */
-	DRIVER( carpolo )	/* (c) 1977 Exidy */
-	DRIVER( sidetrac )	/* (c) 1979 Exidy */
-	DRIVER( targ )		/* (c) 1980 Exidy */
-	DRIVER( spectar )	/* (c) 1980 Exidy */
-	DRIVER( teetert )	/* (c) 1982 Exidy */
-	DRIVER( circus )	/* (c) 1977 Exidy */
-	DRIVER( robotbwl )	/* (c) 197? Exidy */
-	DRIVER( crash )		/* (c) 1979 Exidy */
-	DRIVER( ripcord )	/* (c) 1979 Exidy */
-	DRIVER( starfire )	/* (c) 1979 Exidy */
-	DRIVER( starfirea )	/* (c) 1979 Exidy */
+	/* Bally / Sente games */
+	DRIVER( sentetst )
+	DRIVER( cshift )	/* (c) 1984 */
+	DRIVER( gghost )	/* (c) 1984 */
+	DRIVER( hattrick )	/* (c) 1984 */
+	DRIVER( otwalls )	/* (c) 1984 */
+	DRIVER( snakepit )	/* (c) 1984 */
+	DRIVER( snakjack )	/* (c) 1984 */
+	DRIVER( stocker )	/* (c) 1984 */
+	DRIVER( triviag1 )	/* (c) 1984 */
+	DRIVER( trivia12 )	/* (c) 1984 */
+	DRIVER( triviag2 )	/* (c) 1984 */
+	DRIVER( triviasp )	/* (c) 1984 */
+	DRIVER( triviayp )	/* (c) 1984 */
+	DRIVER( triviabb )	/* (c) 1984 */
+	DRIVER( triviaes )	/* (c) 1984 */
+	DRIVER( gimeabrk )	/* (c) 1985 */
+	DRIVER( minigolf )	/* (c) 1985 */
+	DRIVER( minigolf2 )	/* (c) 1985 */
+	DRIVER( toggle )	/* (c) 1985 */
+	DRIVER( nametune )	/* (c) 1986 */
+	DRIVER( nstocker )	/* (c) 1986 */
+	DRIVER( nstocker2 )	/* (c) 1986 */
+	DRIVER( sfootbal )	/* (c) 1986 */
+	DRIVER( spiker )	/* (c) 1986 */
+	DRIVER( stompin )	/* (c) 1986 */
+	DRIVER( rescraid )	/* (c) 1987 */
+	DRIVER( rescraida )	/* (c) 1987 */
+	DRIVER( grudge )	/* prototype - Bally/Midway */
+	DRIVER( shrike )	/* (c) 1987 */
+	DRIVER( gridlee )	/* [1983 Videa] prototype - no copyright notice */
+
+	/* Exidy games */
+	DRIVER( carpolo )	/* (c) 1977 */
+	DRIVER( sidetrac )	/* (c) 1979 */
+	DRIVER( targ )		/* (c) 1980 */
+	DRIVER( targc )		/* (c) 1980 */
+	DRIVER( spectar )	/* (c) 1980 */
+	DRIVER( spectar1 )	/* (c) 1980 */
+	DRIVER( rallys )	/* (c) 1980 Novar (bootleg?) */
+	DRIVER( phantoma )	/* (c) 1980 Jeutel (bootleg?) */
+	DRIVER( venture )	/* (c) 1981 */
+	DRIVER( venture2 )	/* (c) 1981 */
+	DRIVER( venture4 )	/* (c) 1981 */
+	DRIVER( teetert )	/* (c) 1981 */
+	DRIVER( mtrap )		/* (c) 1981 */
+	DRIVER( mtrap3 )	/* (c) 1981 */
+	DRIVER( mtrap4 )	/* (c) 1981 */
+	DRIVER( pepper2 )	/* (c) 1982 */
+	DRIVER( hardhat )	/* (c) 1982 */
+	DRIVER( fax )		/* (c) 1983 */
+	DRIVER( fax2 )		/* (c) 1983 */
+	DRIVER( circus )	/* no copyright notice [1977?] */
+	DRIVER( circusse )	/* bootleg */
+	DRIVER( robotbwl )	/* no copyright notice */
+	DRIVER( crash )		/* Exidy [1979?] */
+	DRIVER( ripcord )	/* Exidy [1977?] */
+	DRIVER( starfire )	/* Exidy [1979?] */
+	DRIVER( starfirea )	/* Exidy [1979?] */
 	DRIVER( fireone )	/* (c) 1979 Exidy */
 	DRIVER( starfir2 )	/* (c) 1979 Exidy */
+	DRIVER( victory )	/* (c) 1982 */
+	DRIVER( victorba )	/* (c) 1982 */
+	DRIVER( topgunnr )	/* (c) 1986 */
+
+	/* Gaelco 2D games */
+	DRIVER( mastboy )	/* (c) 1987 - No Ref on the PCB */
+	DRIVER( mastboyi )	/* (c) 1987 - No Ref on the PCB */
+	DRIVER( xorworld )	/* (c) 1990 - prototype */
+	DRIVER( bigkarnk )	/* (c) 1991 - Ref 901112-1 */
+	/* Master Boy 2 */	/* (c) 1991 - Ref ??? */
+	DRIVER( splash )	/* (c) 1992 - Ref 922804 */
+	DRIVER( splash10 )	/* (c) 1992 - Ref 922804 */
+	DRIVER( paintlad )	/* (c) 1992 - ver 1.3 */
+	DRIVER( roldfrog )	/* not a gaelco game but based on splash code */
+	DRIVER( roldfroga )	/* not a gaelco game but based on splash code */
+	DRIVER( rebus )		/* not a gaelco game but on similar hw to splash */
+	DRIVER( funystrp )	/* not a gaelco game but on similar hw to splash */
+	DRIVER( puckpepl )	/* not a gaelco game but on similar hw to splash */
+	DRIVER( thoop )		/* (c) 1992 - Ref 922804/1 */
+	DRIVER( squash )	/* (c) 1992 - Ref 922804/2 */
 	DRIVER( wrally )	/* (c) 1993 - Ref 930705 */
+	DRIVER( wrallya )	/* (c) 1993 - Ref 930705 */
+	DRIVER( wrallyb )	/* (c) 1993 - Ref 930217 */
+	DRIVER( glass )		/* (c) 1993 - Ref 931021 */
+	DRIVER( glass10 )	/* (c) 1993 - Ref 931021 */
+	DRIVER( glassbrk )	/* (c) 1993 - Ref 931021 shows "Break Edition" on a real PCB */
+	DRIVER( targeth )	/* (c) 1994 - Ref 940531 */
+	DRIVER( targetha )	/* (c) 1994 - Ref 940531 */
+	DRIVER( thoop2 )	/* (c) 1994 - Ref ??? */
+	DRIVER( aligator )	/* (c) 1994 - Ref 940411 */
+	DRIVER( aligatorun )	/* (c) 1994 - Ref 940411 (unprotected) */
+	DRIVER( biomtoy )	/* (c) 1995 - Ref 922804/2 - (unprotected) */
+	DRIVER( touchgo )	/* (c) 1995 - Ref 950906 */
+	DRIVER( touchgon )	/* (c) 1995 - Ref 950906 */
+	DRIVER( touchgoe )	/* (c) 1995 - Ref 950510-1 */
+	DRIVER( wrally2 )	/* (c) 1995 - Ref 950510 */
+	DRIVER( maniacsp )	/* (c) 1996 - Ref 922804/2 - (prototype) */
+	DRIVER( maniacsq )	/* (c) 1996 - Ref ??? - (unprotected) */
+	DRIVER( snowboar )	/* (c) 1996 - Ref 960419/1 */
+	DRIVER( snowboara )	/* (c) 1996 - Ref 960419/1 */
+	DRIVER( bang )		/* (c) 1998 - Ref ??? */
+	DRIVER( bangj )		/* (c) 1999 - Ref ??? */
+	DRIVER( grtesoro )	/* (c) 1999 - Ref ??? */
 
 	/* "Pacman hardware" games */
 	DRIVER( puckman )	/* (c) 1980 Namco */
