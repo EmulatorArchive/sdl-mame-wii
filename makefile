@@ -527,7 +527,7 @@ CDEFS = $(DEFS) $(COREDEFS) $(SOUNDDEFS)
 # primary targets
 #-------------------------------------------------
 
-emulator: maketree $(BUILD) $(EMULATOR)
+emulator: maketree $(BUILD) $(EMULATOR).dol
 
 buildtools: maketree $(BUILD)
 
@@ -587,8 +587,10 @@ $(EMULATOR): $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBEMU) $(LIBCPU) $(LIBDASM) $
 	@echo Linking $@...
 # TODO: Figure out the correct order to put the libraries so I don't have to include them twice
 	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) $(LIBS) $^ $(LIBS) -o $@
-	@echo Making $@.dol...
-	@elf2dol $@ $@.dol
+
+$(EMULATOR).dol: $(EMULATOR)
+	@echo Making $@...
+	@elf2dol $(EMULATOR) $@
 
 endif
 

@@ -1178,7 +1178,7 @@ static OSDWORK_CALLBACK( complete_create_wt )
 			   instead of letting sdlwindow_blit_surface_size() resize it
 			   this stops the window from "flashing" from the wrong aspect
 			   size to the right one at startup. */
-			tempwidth = (window->maxwidth != 0) ? window->maxwidth : 640;
+			tempwidth = (window->maxwidth != 0) ? window->maxwidth : gx_screenWidth();
 			tempheight = (window->maxheight != 0) ? window->maxheight : 480;
 
 			get_min_bounds(window, &tempwidth, &tempheight, video_config.keepaspect );

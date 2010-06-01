@@ -333,7 +333,7 @@ static int drawgx_window_create(sdl_window_info *window, int width, int height)
 	//if (!sdl->sdlsurf)
 	//	return 1;
 
-	window->width = 640;//sdl->sdlsurf->w;
+	window->width = gx_screenWidth();//sdl->sdlsurf->w;
 	window->height = 480;//sdl->sdlsurf->h;
 
 	sdl->safe_hofs = (window->width - window->width * options_get_float(mame_options(), SDLOPTVAL_SAFEAREA)) / 2;
@@ -424,7 +424,7 @@ static int drawgx_window_create(sdl_window_info *window, int width, int height)
 	GX_SetAlphaUpdate(GX_TRUE);
 	GX_SetColorUpdate(GX_TRUE);
 
-	guOrtho(perspective,0,479,0,639,0,300);
+	guOrtho(perspective,0,479,0,gx_screenWidth()-1,0,300);
 	GX_LoadProjectionMtx(perspective, GX_ORTHOGRAPHIC);
 
 	guMtxIdentity(GXmodelView2D);
