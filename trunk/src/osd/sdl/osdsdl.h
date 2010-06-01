@@ -328,4 +328,6 @@
 
 void sdlaudio_init(running_machine *machine);
 
+int gx_screenWidth();
+
 #endif

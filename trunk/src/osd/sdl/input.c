@@ -784,7 +784,7 @@ static void sdlinput_register_mice(running_machine *machine)
 	{
 		input_device_class_enable(machine, DEVICE_CLASS_LIGHTGUN, TRUE);
 		WPAD_SetDataFormat(WPAD_CHAN_ALL, WPAD_FMT_BTNS_ACC_IR);
-		WPAD_SetVRes(WPAD_CHAN_ALL, 640, 480);
+		WPAD_SetVRes(WPAD_CHAN_ALL, gx_screenWidth(), 480);
 	}
 
 	devmap_init(machine, &mouse_map, SDLOPTION_MOUSEINDEX, 4, "Wiimote mapping");

@@ -246,7 +246,7 @@ void sdlvideo_monitor_refresh(sdl_monitor_info *monitor)
 				
 				sdl_vi = SDL_GetVideoInfo();
 				#ifdef GEKKO
-				cw = 640 * options_get_float(mame_options(), SDLOPTVAL_SAFEAREA);
+				cw = gx_screenWidth() * options_get_float(mame_options(), SDLOPTVAL_SAFEAREA);
 				ch = 480 * options_get_float(mame_options(), SDLOPTVAL_SAFEAREA);
 				#elif (SDL_VERSION_ATLEAST(1,2,10))
 				cw = sdl_vi->current_w;

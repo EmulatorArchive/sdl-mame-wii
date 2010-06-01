@@ -73,6 +73,12 @@ static char cwd[512];
 #endif
 
 static int is_inited;
+static int _gx_screenWidth;
+
+int gx_screenWidth()
+{
+	return _gx_screenWidth;
+}
 
 //============================================================
 //  OPTIONS
@@ -419,6 +425,8 @@ int SDL_main(int argc, char **argv)
 	mame_set_output_channel(OUTPUT_CHANNEL_ERROR, log_errors, NULL, NULL, NULL);
 
 	is_inited = 0;
+
+	_gx_screenWidth = (CONF_GetAspectRatio() == CONF_ASPECT_16_9) ? 852 : 640;
 
 	//chdir("/mame");
 
