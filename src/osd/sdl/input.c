@@ -1554,7 +1554,7 @@ void sdlinput_poll(running_machine *machine)
 
 		if (ir.valid)
 		{
-			devinfo->mouse.lX = (ir.x - 320) * INPUT_ABSOLUTE_MAX / 320;
+			devinfo->mouse.lX = (ir.x - (gx_screenWidth() / 2)) * INPUT_ABSOLUTE_MAX / (gx_screenWidth() / 2);
 			devinfo->mouse.lY = (ir.y - 240) * INPUT_ABSOLUTE_MAX / 240;
 		}
 		else
