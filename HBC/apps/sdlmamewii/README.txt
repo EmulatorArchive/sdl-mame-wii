@@ -45,6 +45,13 @@ ISSUES:
 
 CHANGELOG:
 
+0.6.0
+* Compiled with libogc 1.8.6, USB loading should be faster now if you have IOS58
+* Changed video code around. Most games get a speedup or remain the same from
+  this, but at least one (frogger) is slower for some reason.
+* Widescreen support
+* Fixed some games giving duplication errors and causing the emulator to exit
+
 0.5.0
 * Downgraded to MAME 0.134u4 due to issues with some ROMs not working
 * SDL no longer used for video; FPS is increased

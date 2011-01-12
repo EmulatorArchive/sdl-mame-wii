@@ -903,7 +903,7 @@ static void *draw_thread()
 					GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
 					break;
 				case BLENDMODE_RGB_MULTIPLY:
-					GX_SetBlendMode(GX_BM_SUBSTRACT, GX_BL_SRCCLR, GX_BL_ZERO, GX_LO_CLEAR);
+					GX_SetBlendMode(GX_BM_SUBTRACT, GX_BL_SRCCLR, GX_BL_ZERO, GX_LO_CLEAR);
 					break;
 				case BLENDMODE_ADD:
 					GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_CLEAR);
