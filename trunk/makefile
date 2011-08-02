@@ -45,7 +45,7 @@ endif
 #-------------------------------------------------
 
 ifndef OSD
-OSD = sdl
+OSD = wii
 endif
 
 ifndef CROSS_BUILD_OSD
@@ -428,7 +428,7 @@ ifdef MAP
 LDFLAGSEMULATOR += -Wl,-Map,$(FULLNAME).map
 endif
 
-LDFLAGS += $(MACHDEP) -L$(DEVKITPRO)/libogc/lib/wii
+LDFLAGS += $(MACHDEP) -L$(LIBOGC_LIB)
 
 #-------------------------------------------------
 # define the standard object directory; other
@@ -482,7 +482,8 @@ LIBS += -lz
 ZLIB =
 endif
 
-LIBS += -lSDLnovid -ldb -lfat -logc -lwiiuse -lbte -lasnd -lwiikeyboard
+LIBS += -ldb -lfat -logc -lwiiuse -lbte -lasnd -lwiikeyboard -lm
+CFLAGS += -I$(LIBOGC_INC)
 
 #-------------------------------------------------
 # 'all' target needs to go here, before the 
@@ -583,14 +584,14 @@ ifndef EXECUTABLE_DEFINED
 # always recompile the version string
 $(VERSIONOBJ): $(DRVLIBS) $(LIBOSD) $(LIBEMU) $(LIBCPU) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(LIBOCORE) $(RESFILE)
 
-$(EMULATOR): $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBEMU) $(LIBCPU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(LIBOCORE) $(RESFILE)
+$(EMULATOR).elf: $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBEMU) $(LIBCPU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(LIBOCORE) $(RESFILE)
 	@echo Linking $@...
 # TODO: Figure out the correct order to put the libraries so I don't have to include them twice
 	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) $(LIBS) $^ $(LIBS) -o $@
 
-$(EMULATOR).dol: $(EMULATOR)
+$(EMULATOR).dol: $(EMULATOR).elf
 	@echo Making $@...
-	@elf2dol $(EMULATOR) $@
+	@elf2dol $^ $@
 
 endif
 
