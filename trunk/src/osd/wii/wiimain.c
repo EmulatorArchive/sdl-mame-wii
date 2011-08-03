@@ -9,6 +9,7 @@
 
 #include "osdepend.h"
 #include <ogcsys.h>
+#include <wiiuse/wpad.h>
 #include <fat.h>
 #include <unistd.h>
 #include "wiiinput.h"
@@ -54,7 +55,7 @@ static UINT8 keyboard_state[KEY_TOTAL];
 
 static const options_entry mame_sdl_options[] =
 {
-	{ "initpath", ".;usb:/mame;sd:/mame", 0, "path to ini files" },
+	{ "initpath", ".;/mame", 0, "path to ini files" },
 	{ NULL, NULL, OPTION_HEADER, "WII OPTIONS" },
 	{ "safearea(0.01-1)", "1.0", 0, "Adjust video for safe areas on older TVs (.9 or .85 are usually good values)" },
 	{ NULL }
@@ -77,10 +78,24 @@ int main(int argc, char *argv[])
 		""
 	};
 	int nargc = 1;
-	//L2Enhance();
+	int ret;
+	L2Enhance();
+	WPAD_Init();
+	PAD_Init();
+	
+	fatInitDefault();
+	if (chdir("usb:/mame/") == 0 || chdir("sd:/mame/") == 0);
+
+	wii_init_width(); 
+	wii_init_video();
+
 	// cli_execute does the heavy lifting; if we have osd-specific options, we
 	// would pass them as the third parameter here
-	return cli_execute(nargc, (char **) nargv, NULL);
+	ret = cli_execute(nargc, (char **) nargv, NULL);
+	
+	wii_shutdown_video();
+	
+	return ret;
 }
 
 
@@ -90,43 +105,12 @@ int main(int argc, char *argv[])
 
 void osd_init(running_machine *machine)
 {
-	// Give the USB IO time to warm up
-	sleep(1);
-	fatInitDefault();
-	if (chdir("usb:/mame/") == 0 || chdir("sd:/mame/") == 0);
-
-	wii_init_width(); 
-	wii_init_video();
-
-	// initialize the video system by allocating a rendering target
 	our_target = render_target_alloc(machine, NULL, 0);
 	if (our_target == NULL)
 		fatalerror("Error creating render target");
 
-	// nothing yet to do to initialize sound, since we don't have any
-	// sound updates are handled by osd_update_audio_stream() below
-
-	// initialize the input system by adding devices
 	wii_init_input(machine);
-	// let's pretend like we have a keyboard device
-	/*keyboard_device = input_device_add(machine, DEVICE_CLASS_KEYBOARD, "Keyboard", NULL);
-	if (keyboard_device == NULL)
-		fatalerror("Error creating keyboard device");
 
-	// our faux keyboard only has a couple of keys (corresponding to the
-	// common defaults)
-	input_device_item_add(keyboard_device, "Esc", &keyboard_state[KEY_ESCAPE], ITEM_ID_ESC, keyboard_get_state);
-	input_device_item_add(keyboard_device, "P1", &keyboard_state[KEY_P1_START], ITEM_ID_1, keyboard_get_state);
-	input_device_item_add(keyboard_device, "B1", &keyboard_state[KEY_BUTTON_1], ITEM_ID_LCONTROL, keyboard_get_state);
-	input_device_item_add(keyboard_device, "B2", &keyboard_state[KEY_BUTTON_2], ITEM_ID_LALT, keyboard_get_state);
-	input_device_item_add(keyboard_device, "B3", &keyboard_state[KEY_BUTTON_3], ITEM_ID_SPACE, keyboard_get_state);
-	input_device_item_add(keyboard_device, "JoyU", &keyboard_state[KEY_JOYSTICK_U], ITEM_ID_UP, keyboard_get_state);
-	input_device_item_add(keyboard_device, "JoyD", &keyboard_state[KEY_JOYSTICK_D], ITEM_ID_DOWN, keyboard_get_state);
-	input_device_item_add(keyboard_device, "JoyL", &keyboard_state[KEY_JOYSTICK_L], ITEM_ID_LEFT, keyboard_get_state);
-	input_device_item_add(keyboard_device, "JoyR", &keyboard_state[KEY_JOYSTICK_R], ITEM_ID_RIGHT, keyboard_get_state);*/
-
-	// hook up the debugger log
-//  add_logerror_callback(machine, output_oslog);
 	return;
 }
 

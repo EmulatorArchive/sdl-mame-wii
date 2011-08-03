@@ -30,6 +30,7 @@ void wii_init_input(running_machine *machine)
 	int i;
 	input_device_class_enable(machine, DEVICE_CLASS_LIGHTGUN, TRUE);
 	input_device_class_enable(machine, DEVICE_CLASS_JOYSTICK, TRUE);
+
 	WPAD_SetDataFormat(WPAD_CHAN_ALL, WPAD_FMT_BTNS_ACC_IR);
 	WPAD_SetVRes(WPAD_CHAN_ALL, wii_screen_width(), 480);
 
@@ -62,6 +63,9 @@ void wii_init_input(running_machine *machine)
 void wii_poll_input()
 {
 	int i;
+
+	PAD_ScanPads();
+
 	for (i = 0; i < 4; i++)
 	{
 		static const int const buttonmap[8] = { PAD_BUTTON_A, PAD_BUTTON_B, PAD_BUTTON_X, PAD_BUTTON_Y, PAD_TRIGGER_Z, PAD_TRIGGER_R, PAD_TRIGGER_L, PAD_BUTTON_START };
@@ -77,10 +81,10 @@ void wii_poll_input()
 		gamecube_hats[i][2] = ((buttons & PAD_BUTTON_LEFT) != 0) ? 0x80 : 0;
 		gamecube_hats[i][3] = ((buttons & PAD_BUTTON_RIGHT) != 0) ? 0x80 : 0;
 		
-		gamecube_axis[i][0] = (PAD_StickX(i) - 0x80) * 512;
-		gamecube_axis[i][1] = (PAD_StickY(i) - 0x80) * 512;
-		gamecube_axis[i][2] = (PAD_SubStickX(i) - 0x80) * 512;
-		gamecube_axis[i][3] = (PAD_SubStickY(i) - 0x80) * 512;
+		gamecube_axis[i][0] = PAD_StickX(i) * 512;
+		gamecube_axis[i][1] = PAD_StickY(i) * -512;
+		gamecube_axis[i][2] = PAD_SubStickX(i) * 512;
+		gamecube_axis[i][3] = PAD_SubStickY(i) * -512;
 		gamecube_axis[i][4] = PAD_TriggerL(i) * 512;
 		gamecube_axis[i][5] = PAD_TriggerR(i) * 512;
 	}

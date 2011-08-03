@@ -43,6 +43,10 @@ static gx_tex *lastTex = NULL;
 static gx_tex *firstScreenTex = NULL;
 static gx_tex *lastScreenTex = NULL;
 
+static const render_primitive_list *currlist = NULL;
+static lwp_t vidthread = LWP_THREAD_NULL;
+static BOOL wii_stopping = FALSE;
+
 static unsigned char blanktex[2*16] __attribute__((aligned(32))) = {
 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -426,7 +430,7 @@ static void prep_texture(render_primitive *prim)
 	GX_InitTexObj(&texObj, newTex->data, prim->texture.width, prim->texture.height, newTex->format, GX_CLAMP, GX_CLAMP, GX_FALSE);
 
 	//if (PRIMFLAG_GET_SCREENTEX(prim->flags))
-		//GX_InitTexObjLOD(&texObj, GX_NEAR, GX_NEAR, 0.0f, 0.0f, 0.0f, GX_DISABLE, GX_DISABLE, GX_ANISO_1);
+		GX_InitTexObjLOD(&texObj, GX_NEAR, GX_NEAR, 0.0f, 0.0f, 0.0f, GX_DISABLE, GX_DISABLE, GX_ANISO_1);
 
 	GX_LoadTexObj(&texObj, GX_TEXMAP0);
 }
@@ -465,106 +469,123 @@ static void clearScreenTexs()
 	lastScreenTex = NULL;
 }
 
+static void *wii_video_thread()
+{
+	while (!wii_stopping)
+	{
+		render_primitive *prim;
+
+		osd_lock_acquire(currlist->lock);
+
+		for (prim = currlist->head; prim != NULL; prim = prim->next)
+		{
+			u8 r, g, b, a;
+			r = (u8)(255.0f * prim->color.r);
+			g = (u8)(255.0f * prim->color.g);
+			b = (u8)(255.0f * prim->color.b);
+			a = (u8)(255.0f * prim->color.a);
+
+			switch (PRIMFLAG_GET_BLENDMODE(prim->flags))
+			{
+				case BLENDMODE_NONE:
+					GX_SetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR);
+					break;
+				case BLENDMODE_ALPHA:
+					GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
+					break;
+				case BLENDMODE_RGB_MULTIPLY:
+					GX_SetBlendMode(GX_BM_SUBTRACT, GX_BL_SRCCLR, GX_BL_ZERO, GX_LO_CLEAR);
+					break;
+				case BLENDMODE_ADD:
+					GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_CLEAR);
+					break;
+			}
+
+			switch (prim->type)
+			{
+				case RENDER_PRIMITIVE_LINE:
+					GX_LoadTexObj(&blankTex, GX_TEXMAP0);
+					GX_SetLineWidth((u8)(prim->width * 16.0f), GX_TO_ZERO);
+					GX_Begin(GX_LINES, GX_VTXFMT0, 2);
+						GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
+						GX_Color4u8(r, g, b, a);
+						GX_TexCoord2f32(0, 0);
+						GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
+						GX_Color4u8(r, g, b, a);
+						GX_TexCoord2f32(0, 0);
+					GX_End();
+					break;
+				case RENDER_PRIMITIVE_QUAD:
+					if (prim->texture.base != NULL)
+					{
+						prep_texture(prim);
+						GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
+							GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(prim->texcoords.tl.u, prim->texcoords.tl.v);
+							GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y1+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(prim->texcoords.bl.u, prim->texcoords.bl.v);
+							GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(prim->texcoords.br.u, prim->texcoords.br.v);
+							GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y0+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(prim->texcoords.tr.u, prim->texcoords.tr.v);
+						GX_End();
+					}
+					else
+					{
+						GX_LoadTexObj(&blankTex, GX_TEXMAP0);
+						GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
+							GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(0, 0);
+							GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y1+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(0, 0);
+							GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(0, 0);
+							GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y0+vofs);
+							GX_Color4u8(r, g, b, a);
+							GX_TexCoord2f32(0, 0);
+						GX_End();
+					}
+					break;
+			}
+		}
+
+		osd_lock_release(currlist->lock);
+
+		currfb ^= 1;
+
+		GX_DrawDone();
+		GX_CopyDisp(xfb[currfb],GX_TRUE);
+		VIDEO_SetNextFramebuffer(xfb[currfb]);
+		VIDEO_Flush();
+		VIDEO_WaitVSync();
+
+		clearScreenTexs();
+	}
+	
+	return (void *)0;
+}
+
 void wii_video_render(const render_primitive_list *primlist)
 {
-	render_primitive *prim;
+	currlist = primlist;
 
-	osd_lock_acquire(primlist->lock);
-
-	for (prim = primlist->head; prim != NULL; prim = prim->next)
-	{
-		u8 r, g, b, a;
-		r = (u8)(255.0f * prim->color.r);
-		g = (u8)(255.0f * prim->color.g);
-		b = (u8)(255.0f * prim->color.b);
-		a = (u8)(255.0f * prim->color.a);
-
-		switch (PRIMFLAG_GET_BLENDMODE(prim->flags))
-		{
-			case BLENDMODE_NONE:
-				GX_SetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR);
-				break;
-			case BLENDMODE_ALPHA:
-				GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
-				break;
-			case BLENDMODE_RGB_MULTIPLY:
-				GX_SetBlendMode(GX_BM_SUBTRACT, GX_BL_SRCCLR, GX_BL_ZERO, GX_LO_CLEAR);
-				break;
-			case BLENDMODE_ADD:
-				GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_CLEAR);
-				break;
-		}
-
-		switch (prim->type)
-		{
-			case RENDER_PRIMITIVE_LINE:
-				GX_LoadTexObj(&blankTex, GX_TEXMAP0);
-				GX_SetLineWidth((u8)(prim->width * 16.0f), GX_TO_ZERO);
-				GX_Begin(GX_LINES, GX_VTXFMT0, 2);
-					GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
-					GX_Color4u8(r, g, b, a);
-					GX_TexCoord2f32(0, 0);
-					GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
-					GX_Color4u8(r, g, b, a);
-					GX_TexCoord2f32(0, 0);
-				GX_End();
-				break;
-			case RENDER_PRIMITIVE_QUAD:
-				if (prim->texture.base != NULL)
-				{
-					prep_texture(prim);
-					GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
-						GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(prim->texcoords.tl.u, prim->texcoords.tl.v);
-						GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y1+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(prim->texcoords.bl.u, prim->texcoords.bl.v);
-						GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(prim->texcoords.br.u, prim->texcoords.br.v);
-						GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y0+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(prim->texcoords.tr.u, prim->texcoords.tr.v);
-					GX_End();
-				}
-				else
-				{
-					GX_LoadTexObj(&blankTex, GX_TEXMAP0);
-					GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
-						GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y0+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(0, 0);
-						GX_Position2f32(prim->bounds.x0+hofs, prim->bounds.y1+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(0, 0);
-						GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y1+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(0, 0);
-						GX_Position2f32(prim->bounds.x1+hofs, prim->bounds.y0+vofs);
-						GX_Color4u8(r, g, b, a);
-						GX_TexCoord2f32(0, 0);
-					GX_End();
-				}
-				break;
-		}
-	}
-
-	osd_lock_release(primlist->lock);
-
-	currfb ^= 1;
-
-	GX_DrawDone();
-	GX_CopyDisp(xfb[currfb],GX_TRUE);
-	VIDEO_SetNextFramebuffer(xfb[currfb]);
-	VIDEO_Flush();
-	VIDEO_WaitVSync();
-
-	clearScreenTexs();
+	if (vidthread == LWP_THREAD_NULL)
+		LWP_CreateThread(&vidthread, wii_video_thread, NULL, NULL, 0, 67);
 }
 
 void wii_shutdown_video()
 {
+	void *status;
+
+	wii_stopping = TRUE;
+	LWP_JoinThread(vidthread, &status);
 	clearTexs();
 
 	GX_AbortFrame();
