@@ -136,7 +136,7 @@ BUILD_EXPAT = 1
 BUILD_ZLIB = 1
 
 # uncomment next line to include the symbols
-# SYMBOLS = 1
+SYMBOLS = 1
 
 # uncomment next line to include profiling information from the compiler
 # PROFILE = 1
@@ -149,7 +149,7 @@ BUILD_ZLIB = 1
 
 # specify optimization level or leave commented to use the default
 # (default is OPTIMIZE = 3 normally, or OPTIMIZE = 0 with symbols)
-# OPTIMIZE = 3
+OPTIMIZE = 3
 
 # experimental: uncomment to compile everything as C++ for stricter type checking
 # CPP_COMPILE = 1
@@ -237,7 +237,8 @@ endif
 FULLNAME = $(PREFIX)$(NAME)$(CPPSUFFIX)$(SUFFIX)$(DEBUGSUFFIX)
 
 # add an EXE suffix to get the final emulator name
-EMULATOR = $(FULLNAME)$(EXE)
+EMULATOR = $(FULLNAME).elf
+EMULATORDOL = $(FULLNAME).dol
 
 
 
@@ -418,7 +419,7 @@ endif
 ifndef SYMBOLS
 ifndef PROFILE
 ifneq ($(TARGETOS),macosx)
-LDFLAGS += -s
+#LDFLAGS += -s
 endif
 endif
 endif
@@ -482,7 +483,8 @@ LIBS += -lz
 ZLIB =
 endif
 
-LIBS += -ldb -lfat -logc -lwiiuse -lbte -lasnd -lwiikeyboard -lm
+#LIBS += -ldb -lfat -logc -lwiiuse -lbte -lasnd -lwiikeyboard -lm
+LIBS += -lm -lfat -logc -lwiiuse -lbte
 CFLAGS += -I$(LIBOGC_INC)
 
 #-------------------------------------------------
@@ -528,7 +530,7 @@ CDEFS = $(DEFS) $(COREDEFS) $(SOUNDDEFS)
 # primary targets
 #-------------------------------------------------
 
-emulator: maketree $(BUILD) $(EMULATOR).dol
+emulator: maketree $(BUILD) $(EMULATORDOL)
 
 buildtools: maketree $(BUILD)
 
@@ -541,8 +543,8 @@ clean: $(OSDCLEAN)
 	$(RM) -r $(OBJ)
 	@echo Deleting $(EMULATOR)...
 	$(RM) $(EMULATOR)
-	@echo Deleting $(EMULATOR).dol...
-	$(RM) $(EMULATOR).dol
+	@echo Deleting $(EMULATORDOL)...
+	$(RM) $(EMULATORDOL)
 	@echo Deleting $(TOOLS)...
 	$(RM) $(TOOLS)
 ifdef MAP
@@ -584,12 +586,12 @@ ifndef EXECUTABLE_DEFINED
 # always recompile the version string
 $(VERSIONOBJ): $(DRVLIBS) $(LIBOSD) $(LIBEMU) $(LIBCPU) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(LIBOCORE) $(RESFILE)
 
-$(EMULATOR).elf: $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBEMU) $(LIBCPU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(LIBOCORE) $(RESFILE)
+$(EMULATOR): $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBEMU) $(LIBCPU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(LIBOCORE) $(RESFILE)
 	@echo Linking $@...
 # TODO: Figure out the correct order to put the libraries so I don't have to include them twice
 	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) $(LIBS) $^ $(LIBS) -o $@
 
-$(EMULATOR).dol: $(EMULATOR).elf
+$(EMULATORDOL): $(EMULATOR)
 	@echo Making $@...
 	@elf2dol $^ $@
 

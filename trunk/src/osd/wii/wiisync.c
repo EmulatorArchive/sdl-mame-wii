@@ -67,4 +67,5 @@ void osd_lock_free(osd_lock *lock)
 {
 	LWP_MutexDestroy(lock->lock);
 	free(lock);
+	lock = 0;
 }

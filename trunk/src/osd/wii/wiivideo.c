@@ -171,13 +171,16 @@ void wii_init_video()
 	VIDEO_SetBlack(false);
 
 	GX_InitTexObj(&blankTex, blanktex, 1, 1, GX_TF_RGB5A3, GX_CLAMP, GX_CLAMP, GX_FALSE);
+}
 
+void wii_init_dimensions()
+{
 	screen_width = wii_screen_width();
 	screen_height = 480;
-	hofs = 0;//(screen_width - screen_width * options_get_float(mame_options(), "safearea")) / 2;
-	vofs = 0;//(screen_height - screen_height * options_get_float(mame_options(), "safearea")) / 2;
-	//screen_width *= options_get_float(mame_options(), "safearea");
-	//screen_height *= options_get_float(mame_options(), "safearea");
+	hofs = (screen_width - screen_width * options_get_float(mame_options(), "safearea")) / 2;
+	vofs = (screen_height - screen_height * options_get_float(mame_options(), "safearea")) / 2;
+	screen_width -= hofs * 2;
+	screen_height -= vofs * 2;
 }
 
 /* adapted from rendersw.c, might not work because as far as I can tell, only 
@@ -474,6 +477,12 @@ static void *wii_video_thread()
 	while (!wii_stopping)
 	{
 		render_primitive *prim;
+
+		if (currlist->lock == 0)
+		{
+			usleep(10);
+			continue;
+		}
 
 		osd_lock_acquire(currlist->lock);
 
