@@ -54,6 +54,7 @@ OBJDIRS += $(WIIOBJ)
 #-------------------------------------------------
 
 OSDCOREOBJS = \
+	$(WIIOBJ)/wiiaudio.o \
 	$(WIIOBJ)/wiidir.o \
 	$(WIIOBJ)/wiifile.o \
 	$(WIIOBJ)/wiiinput.o \

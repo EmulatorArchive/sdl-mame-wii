@@ -13,6 +13,7 @@
 #include "render.h"
 
 void wii_init_video();
+void wii_init_dimensions();
 void wii_video_render(const render_primitive_list *primlist);
 int wii_render_width();
 int wii_render_height();

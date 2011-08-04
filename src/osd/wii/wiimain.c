@@ -12,12 +12,15 @@
 #include <wiiuse/wpad.h>
 #include <fat.h>
 #include <unistd.h>
+#include "wiiaudio.h"
 #include "wiiinput.h"
 #include "wiimisc.h"
 #include "wiivideo.h"
 #include "render.h"
 #include "clifront.h"
 #include "mame.h"
+#include "emuopts.h"
+#include "options.h"
 
 
 //============================================================
@@ -53,7 +56,10 @@ static input_device *keyboard_device;
 // the state of each key
 static UINT8 keyboard_state[KEY_TOTAL];
 
-static const options_entry mame_sdl_options[] =
+static running_machine *current_machine = NULL;
+static BOOL shutting_down = FALSE;
+
+static const options_entry wii_mame_options[] =
 {
 	{ "initpath", ".;/mame", 0, "path to ini files" },
 	{ NULL, NULL, OPTION_HEADER, "WII OPTIONS" },
@@ -67,6 +73,25 @@ static const options_entry mame_sdl_options[] =
 
 static INT32 keyboard_get_state(void *device_internal, void *item_internal);
 
+
+static void wii_shutdown()
+{
+	if (current_machine == NULL)
+		return;
+
+	shutting_down = TRUE;
+
+	// mame_schedule_exit only returns to the game select screen if done in
+	// game, so fake being out of agame before doing it
+	options_set_string(mame_options(), OPTION_GAMENAME, "", OPTION_PRIORITY_CMDLINE);
+	mame_schedule_exit(current_machine);
+}
+
+static void wii_reset()
+{
+	if (current_machine != NULL)
+		mame_schedule_exit(current_machine);
+}
 
 //============================================================
 //  main
@@ -82,7 +107,11 @@ int main(int argc, char *argv[])
 	L2Enhance();
 	WPAD_Init();
 	PAD_Init();
-	
+
+	WPAD_SetPowerButtonCallback((WPADShutdownCallback) wii_shutdown);
+	SYS_SetPowerCallback(wii_shutdown);
+	SYS_SetResetCallback(wii_reset);
+
 	fatInitDefault();
 	if (chdir("usb:/mame/") == 0 || chdir("sd:/mame/") == 0);
 
@@ -91,10 +120,13 @@ int main(int argc, char *argv[])
 
 	// cli_execute does the heavy lifting; if we have osd-specific options, we
 	// would pass them as the third parameter here
-	ret = cli_execute(nargc, (char **) nargv, NULL);
-	
+	ret = cli_execute(nargc, (char **) nargv, wii_mame_options);
+
 	wii_shutdown_video();
 	
+	if (shutting_down)
+		SYS_ResetSystem(SYS_POWEROFF, 0, 0);
+
 	return ret;
 }
 
@@ -105,11 +137,15 @@ int main(int argc, char *argv[])
 
 void osd_init(running_machine *machine)
 {
-	our_target = render_target_alloc(machine, NULL, 0);
+	current_machine = machine;
+	our_target = render_target_alloc(current_machine, NULL, 0);
+
 	if (our_target == NULL)
 		fatalerror("Error creating render target");
 
-	wii_init_input(machine);
+	wii_init_dimensions();
+	wii_init_input(current_machine);
+	wii_init_audio(current_machine);
 
 	return;
 }
@@ -133,36 +169,16 @@ void osd_update(running_machine *machine, int skip_redraw)
 {
 	const render_primitive_list *primlist = render_target_get_primitives(our_target);
 
-	// make that the size of our target
-	render_target_set_bounds(our_target, wii_render_width(), wii_render_height(), 0);
-
-	// lock them, and then render them
 	if (!skip_redraw)
+	{
+		// make that the size of our target
+		render_target_set_bounds(our_target, wii_render_width(), wii_render_height(), 0);
+
+		// lock them, and then render them
 		wii_video_render(primlist);
+	}
 
 	wii_poll_input();
-}
-
-
-//============================================================
-//  osd_update_audio_stream
-//============================================================
-
-void osd_update_audio_stream(running_machine *machine, INT16 *buffer, int samples_this_frame)
-{
-	// if we had actual sound output, we would copy the
-	// interleaved stereo samples to our sound stream
-}
-
-
-//============================================================
-//  osd_set_mastervolume
-//============================================================
-
-void osd_set_mastervolume(int attenuation)
-{
-	// if we had actual sound output, we would adjust the global
-	// volume in response to this function
 }
 
 
