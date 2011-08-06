@@ -11,6 +11,7 @@
 #include "wiimisc.h"
 #include <ogcsys.h>
 #include <malloc.h>
+#include <unistd.h>
 #include "render.h"
 #include "mame.h"
 
