@@ -10,4 +10,5 @@
 #include "mame.h"
 
 void wii_init_audio(running_machine *machine);
+void wii_setup_audio();
 void wii_shutdown_audio();

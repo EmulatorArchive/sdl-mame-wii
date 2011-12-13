@@ -4,11 +4,14 @@ with the emulator, others may not work at all. See below for details.
 
 DEFAULT CONTROLS:
 Emulator Menu: WiiMote Home Button / GameCube L-Trigger
-Insert Coin: WiiMote Minus Button / GameCube R-Trigger
+Insert Coin: WiiMote Minus Button / GameCube Z-Trigger
 Start (not all games use this): WiiMote Plus Button / GameCube Start Button
-Up/Down/Left/Right - WiiMote D-Pad / Nunchuck Joystick / GameCube D-Pad
-Button 1/2/3/4 - WiiMote 1/2/B/A / GameCube B/A/X/Y
-Back (Exits current game) - WiiMote Plus + Minus Buttons / GameCube Z Button
+Up/Down/Left/Right - WiiMote D-Pad / Classic Controller Left Stick /
+  GameCube D-Pad / GameCube Joystick
+Button 1/2/3/4 - WiiMote 1/2/B/A / Classic Controller A/B/X/Y /
+  GameCube A/B/X/Y
+Back (Exits current game) - WiiMote Plus + Minus Buttons /
+  GameCube Z + Start Buttons
 
 Controlls can always be changed from in the emulator options.
 
@@ -31,19 +34,20 @@ ISSUES:
 * Because the Wii is not a strong console, some games will be slow. Frame-
   skipping is enabled by default to make games playable.
 
-* The joystick on GameCube controllers can't be used. (Will be looked into
-  later.)
-
 * The default controller mapping is unsuitable for lightgun games, but there is
   currently no way to make seperate mappings for lightgun and non-lightgun
-  games. If you wish to change the configuration for lightgun games, replace
-  the default.cfg file in mame/cfg with the default-lg.cfg file included.
+  games. You can change the button mapping for lightgun games yourself in the
+  emulator options.
 
 * On older TVs, the edges of the screen can be cut off. To fix this, in mame.ini,
   look for the option "safearea" and set the value to something around 0.8 and
   0.95. It will vary depending on your TV.
 
 CHANGELOG:
+
+1.0
+* Rewritten frontend code entirely, no longer uses SDL.
+* Added better joystick support; Gamecube joystick works!
 
 0.6.0
 * Compiled with libogc 1.8.6, USB loading should be faster now if you have IOS58

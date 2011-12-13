@@ -67,7 +67,7 @@ int wii_render_height()
 	return screen_height;
 }
 
-void wii_init_video()
+void wii_setup_video()
 {
 	u32 xfbHeight;
 	f32 yscale;
@@ -479,7 +479,7 @@ static void *wii_video_thread()
 	{
 		render_primitive *prim;
 
-		if (currlist->lock == 0)
+		if (currlist == NULL || currlist->lock == 0)
 		{
 			usleep(10);
 			continue;
@@ -590,6 +590,20 @@ void wii_video_render(const render_primitive_list *primlist)
 		LWP_CreateThread(&vidthread, wii_video_thread, NULL, NULL, 0, 67);
 }
 
+static void wii_video_cleanup(running_machine *machine)
+{
+	const render_primitive_list *primlist = currlist;
+	osd_lock_acquire(primlist->lock);
+	currlist = NULL;
+	osd_lock_release(primlist->lock);
+	clearTexs();
+}
+
+void wii_init_video(running_machine *machine)
+{
+	add_exit_callback(machine, wii_video_cleanup);
+}
+
 void wii_shutdown_video()
 {
 	void *status;
@@ -597,6 +611,7 @@ void wii_shutdown_video()
 	wii_stopping = TRUE;
 	LWP_JoinThread(vidthread, &status);
 	clearTexs();
+	clearScreenTexs();
 
 	GX_AbortFrame();
 	GX_Flush();

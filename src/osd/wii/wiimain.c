@@ -115,8 +115,9 @@ int main(int argc, char *argv[])
 	fatInitDefault();
 	if (chdir("usb:/mame/") == 0 || chdir("sd:/mame/") == 0);
 
-	wii_init_width(); 
-	wii_init_video();
+	wii_setup_width(); 
+	wii_setup_video();
+	wii_setup_audio();
 
 	// cli_execute does the heavy lifting; if we have osd-specific options, we
 	// would pass them as the third parameter here
@@ -146,6 +147,7 @@ void osd_init(running_machine *machine)
 	wii_init_dimensions();
 	wii_init_input(current_machine);
 	wii_init_audio(current_machine);
+	wii_init_video(current_machine);
 
 	return;
 }

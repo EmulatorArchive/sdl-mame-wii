@@ -45,7 +45,7 @@ void osd_break_into_debugger(const char *message)
 }
 
 
-void wii_init_width()
+void wii_setup_width()
 {
 	_wii_screen_width = (CONF_GetAspectRatio() == CONF_ASPECT_16_9) ? 852 : 640;
 }

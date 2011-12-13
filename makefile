@@ -136,7 +136,7 @@ BUILD_EXPAT = 1
 BUILD_ZLIB = 1
 
 # uncomment next line to include the symbols
-SYMBOLS = 1
+# SYMBOLS = 1
 
 # uncomment next line to include profiling information from the compiler
 # PROFILE = 1
@@ -149,7 +149,7 @@ SYMBOLS = 1
 
 # specify optimization level or leave commented to use the default
 # (default is OPTIMIZE = 3 normally, or OPTIMIZE = 0 with symbols)
-OPTIMIZE = 3
+# OPTIMIZE = 3
 
 # experimental: uncomment to compile everything as C++ for stricter type checking
 # CPP_COMPILE = 1
@@ -484,7 +484,7 @@ ZLIB =
 endif
 
 #LIBS += -ldb -lfat -logc -lwiiuse -lbte -lasnd -lwiikeyboard -lm
-LIBS += -lm -lfat -logc -lwiiuse -lbte
+LIBS += -lfat -logc -lwiiuse -lbte -lm
 CFLAGS += -I$(LIBOGC_INC)
 
 #-------------------------------------------------
