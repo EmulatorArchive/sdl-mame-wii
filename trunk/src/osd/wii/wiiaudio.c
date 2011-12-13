@@ -13,12 +13,13 @@
 #include <ogcsys.h>
 #include "mame.h"
 
-#define AUDIO_BUFFER 3200 // (48000 / 60) * 2 * 2
+#define AUDIO_BUFFER 3840 // (48000 / 50) * 2 * 2 = 3840
 
 static u8 audiobuffer[2][AUDIO_BUFFER] __attribute__((__aligned__(32)));
 static u8 tmpbuffer[AUDIO_BUFFER];
-static u32 audio_buffersize = 0;
 static u8 whichab = 0;
+static int audiotimeout = 0;
+#define AUDIOTIMEOUT_LIMIT 8
 static lwpq_t audioqueue;
 static lwp_t audiothread;
 static mutex_t audiomutex;
@@ -32,9 +33,9 @@ void osd_update_audio_stream(running_machine *machine, INT16 *buffer, int sample
 		bytes_to_copy = AUDIO_BUFFER;
 
 	LWP_MutexLock(audiomutex);
+	audiotimeout = 0;
 	memset(tmpbuffer, 0, AUDIO_BUFFER);
 	memcpy(tmpbuffer, buffer, bytes_to_copy);
-	audio_buffersize = bytes_to_copy;
 	LWP_MutexUnlock(audiomutex);
 }
 
@@ -44,8 +45,16 @@ void *wii_audio_thread()
 	{
 		memset(audiobuffer[whichab], 0, AUDIO_BUFFER);
 		LWP_MutexLock(audiomutex);
-		memcpy(audiobuffer[whichab], tmpbuffer, AUDIO_BUFFER);
-		memset(tmpbuffer, 0, AUDIO_BUFFER);
+		audiotimeout++;
+		if (audiotimeout > AUDIOTIMEOUT_LIMIT - 1)
+		{
+			memset(audiobuffer[whichab], 0, AUDIO_BUFFER);
+			audiotimeout = AUDIOTIMEOUT_LIMIT;
+		}
+		else
+		{
+			memcpy(audiobuffer[whichab], tmpbuffer, AUDIO_BUFFER);
+		}
 		DCFlushRange(audiobuffer[whichab], AUDIO_BUFFER);
 		LWP_MutexUnlock(audiomutex);
 		LWP_ThreadSleep(audioqueue);
@@ -66,23 +75,40 @@ static void wii_audio_mix()
 	LWP_ThreadSignal(audioqueue);
 }
 
+static void wii_audio_cleanup(running_machine *machine)
+{
+	AUDIO_StopDMA();
+	LWP_MutexLock(audiomutex);
+	audiotimeout = 0;
+	memset(tmpbuffer, 0, AUDIO_BUFFER);
+	LWP_MutexUnlock(audiomutex);
+}
+
+void wii_setup_audio()
+{
+	LWP_MutexInit(&audiomutex, 0);
+	LWP_InitQueue(&audioqueue);
+	LWP_CreateThread(&audiothread, wii_audio_thread, NULL, NULL, 0, 70);
+
+	AUDIO_Init(NULL);
+}
+
 void wii_init_audio(running_machine *machine)
 {
 	u32 sample_rate = (machine->sample_rate == 32000) ? AI_SAMPLERATE_32KHZ : AI_SAMPLERATE_48KHZ;
 
-	AUDIO_Init(NULL);
-	AUDIO_SetDSPSampleRate(sample_rate);
-
 	memset(audiobuffer[0], 0, AUDIO_BUFFER);
 	memset(audiobuffer[1], 0, AUDIO_BUFFER);
 	memset(tmpbuffer,      0, AUDIO_BUFFER);
+	DCFlushRange(audiobuffer[0], AUDIO_BUFFER);
+	DCFlushRange(audiobuffer[1], AUDIO_BUFFER);
 
+	add_exit_callback(machine, wii_audio_cleanup);
+
+	AUDIO_SetDSPSampleRate(sample_rate);
 	AUDIO_RegisterDMACallback(wii_audio_mix);
+	AUDIO_InitDMA((u32) audiobuffer[whichab], AUDIO_BUFFER);
 	AUDIO_StartDMA();
-
-	LWP_MutexInit(&audiomutex, 0);
-	LWP_InitQueue(&audioqueue);
-	LWP_CreateThread(&audiothread, wii_audio_thread, NULL, NULL, 0, 67);
 }
 
 void wii_shutdown_audio()
